@@ -156,7 +156,49 @@ public class PhoneBook {
 				e.printStackTrace();
 			}
 		}
-
+	}
+	
+	private void printPersonByName() {
+		
+		System.out.println("Unesite podatke :");
+		System.out.print("Unesite ime >_ ");
+		String fName = scanner.next();
+		System.out.print("Unesite prezime >_ ");
+		String lName = scanner.next();
+		
+		String joinQuery = "SELECT Br_tel FROM imenik " +
+						   "INNER JOIN osoba ON imenik.ID_Osoba = osoba.ID_Osoba " +
+						   "WHERE osoba.Ime = '" + fName + "' AND osoba.Prezime = '" + lName + "'";
+		
+		try {
+			
+			if (checkPerson(fName, lName) == 0) {
+				System.out.println("Osoba ne postoji u bazi podataka!");
+				return;
+			}
+					
+			standardStatement = connDB.createStatement();
+			setResults = standardStatement.executeQuery(joinQuery);
+			
+			System.out.print("\n" + fName + ", " + lName);
+			
+			while(setResults.next()) {				
+				System.out.print(" : " + setResults.getString(1));				
+			}
+			System.out.println();
+			
+		} catch (SQLException joinEx) {
+			System.err.println(joinEx);
+		} finally {
+			try {
+				standardStatement.close();
+				setResults.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		
 	}
 
 	private boolean openDBConnection() {
@@ -181,9 +223,15 @@ public class PhoneBook {
 	}
 
 	private void printChoice() {
-		System.out.print("\n... Dobrodosli u Web Imenik ...\n\n" + " Izbornik:\n" + " 1 - Dodajte novi unos u imenik\n"
-				+ " 2 - Izlistajte sve unose iz imenika\n" + " 3 - Editujte unos iz imenika\n"
-				+ " 4 - Obrišite unos iz imenika\n" + " 0 - Izlaz iz programa\n " + ">_ ");
+		System.out.print("\n... Dobrodosli u Web Imenik ...\n\n" + 
+						 " Izbornik:\n" + 
+						 " 1 - Dodajte novi unos u imenik\n" +
+						 " 2 - Izlistajte sve unose iz imenika\n" +
+						 " 3 - Pronadji broj telefona po imenu\n" +
+						 " 4 - Editujte unos iz imenika\n" +
+						 " 5 - Obrišite unos iz imenika\n" +
+						 " 0 - Izlaz iz programa\n " + 
+						 ">_ ");
 	}
 
 	public void appMenu() {
@@ -209,10 +257,15 @@ public class PhoneBook {
 				break;
 
 			case 3:
-
+				
+				printPersonByName();
 				break;
+				
 			case 4:
 
+				break;
+			case 5:
+				
 				break;
 			case 0:
 
