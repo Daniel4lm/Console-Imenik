@@ -106,14 +106,14 @@ public class PhoneBook {
 			}
 			/* Ako osoba vec postoji - dodati samo upis u tabela 'imenik' */
 			else {
-				
-				if(!checkPhoneNumber(fName, lName, telNumber)) {
+
+				if (!checkPhoneNumber(fName, lName, telNumber)) {
 					preparedStatement.setInt(1, checkPerson(fName, lName));
 					preparedStatement.setString(2, telNumber);
 					preparedStatement.executeUpdate();
 				} else {
 					System.out.println("Osoba sa istim brojem telefona vec postoji u bazi podataka!");
-				}				
+				}
 			}
 
 			// standardStatement = connDB.createStatement();
@@ -128,7 +128,6 @@ public class PhoneBook {
 				e.printStackTrace();
 			}
 		}
-
 	}
 
 	private void printPersons() {
@@ -157,36 +156,96 @@ public class PhoneBook {
 			}
 		}
 	}
-	
-	private void printPersonByName() {
+
+	/* Funkcija koja vraca max ID iz tabele o studentima */
+	private Integer returnMaxID() throws SQLException  {
 		
+		String maxQuery = "SELECT MAX(ID_Osoba) FROM imenik";				
+		Statement maxStatement = connDB.createStatement();
+		ResultSet max = maxStatement.executeQuery(maxQuery);
+		max.next();
+		Integer maxEl = max.getInt(1);
+		maxStatement.close();
+		max.close();
+		return maxEl;	
+					
+	}
+	
+	/* Funkcija koja izvrasava reset AUTO_INCREMENT svaki put kada se izvrsi delete statement iz tabele */
+	private void auto_increment_Reset() throws SQLException {
+		
+		String alterQuery = "ALTER TABLE imenik AUTO_INCREMENT = " + returnMaxID();
+		Statement alterStatement = connDB.createStatement();
+		alterStatement.executeUpdate(alterQuery);		
+		alterStatement.close();
+	}
+	
+	private void deletePersonEntry() {
+
 		System.out.println("Unesite podatke :");
 		System.out.print("Unesite ime >_ ");
 		String fName = scanner.next();
 		System.out.print("Unesite prezime >_ ");
 		String lName = scanner.next();
-		
-		String joinQuery = "SELECT Br_tel FROM imenik " +
-						   "INNER JOIN osoba ON imenik.ID_Osoba = osoba.ID_Osoba " +
-						   "WHERE osoba.Ime = '" + fName + "' AND osoba.Prezime = '" + lName + "'";
-		
+
+		String deleteQuery = "DELETE FROM imenik WHERE ID_Osoba = " + 
+							 "(SELECT ID_Osoba FROM osoba WHERE Ime = '" + fName + "' AND Prezime = '" + lName + "')";
+
 		try {
-			
+						
 			if (checkPerson(fName, lName) == 0) {
 				System.out.println("Osoba ne postoji u bazi podataka!");
 				return;
 			}
-					
+			
+			standardStatement = connDB.createStatement();
+
+			if (standardStatement.executeUpdate(deleteQuery) > 0) {
+				System.out.println("Osoba obrisana iz imenika ...");
+				
+			}
+			auto_increment_Reset();
+
+		} catch (SQLException delEx) {
+			System.err.println(delEx);
+		} finally {
+			try {
+				standardStatement.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+
+	}
+
+	private void printPersonByName() {
+
+		System.out.println("Unesite podatke :");
+		System.out.print("Unesite ime >_ ");
+		String fName = scanner.next();
+		System.out.print("Unesite prezime >_ ");
+		String lName = scanner.next();
+
+		String joinQuery = "SELECT Br_tel FROM imenik " + "INNER JOIN osoba ON imenik.ID_Osoba = osoba.ID_Osoba "
+				+ "WHERE osoba.Ime = '" + fName + "' AND osoba.Prezime = '" + lName + "'";
+
+		try {
+
+			if (checkPerson(fName, lName) == 0) {
+				System.out.println("Osoba ne postoji u bazi podataka!");
+				return;
+			}
+
 			standardStatement = connDB.createStatement();
 			setResults = standardStatement.executeQuery(joinQuery);
-			
+
 			System.out.print("\n" + fName + ", " + lName);
-			
-			while(setResults.next()) {				
-				System.out.print(" : " + setResults.getString(1));				
+
+			while (setResults.next()) {
+				System.out.print(" : " + setResults.getString(1));
 			}
 			System.out.println();
-			
+
 		} catch (SQLException joinEx) {
 			System.err.println(joinEx);
 		} finally {
@@ -197,8 +256,7 @@ public class PhoneBook {
 				e.printStackTrace();
 			}
 		}
-		
-		
+
 	}
 
 	private boolean openDBConnection() {
@@ -207,6 +265,7 @@ public class PhoneBook {
 			connDB = DriverManager.getConnection(CONN_STRING, userName, password);
 			return true;
 		} catch (SQLException sqle) {
+			System.out.print(" SQL: NEUSPJESNA KONEKCIJA SA BAZOM PODATAKA : > ");
 			System.err.println(sqle);
 		}
 
@@ -223,15 +282,10 @@ public class PhoneBook {
 	}
 
 	private void printChoice() {
-		System.out.print("\n... Dobrodosli u Web Imenik ...\n\n" + 
-						 " Izbornik:\n" + 
-						 " 1 - Dodajte novi unos u imenik\n" +
-						 " 2 - Izlistajte sve unose iz imenika\n" +
-						 " 3 - Pronadji broj telefona po imenu\n" +
-						 " 4 - Editujte unos iz imenika\n" +
-						 " 5 - Obrišite unos iz imenika\n" +
-						 " 0 - Izlaz iz programa\n " + 
-						 ">_ ");
+		System.out.print("\n... Dobrodosli u Web Imenik ...\n\n" + " Izbornik:\n" + " 1 - Dodajte novi unos u imenik\n"
+				+ " 2 - Izlistajte sve unose iz imenika\n" + " 3 - Pronadji broj telefona po imenu\n"
+				+ " 4 - Editujte unos iz imenika\n" + " 5 - Obrišite unos iz imenika\n" + " 0 - Izlaz iz programa\n "
+				+ ">_ ");
 	}
 
 	public void appMenu() {
@@ -257,16 +311,18 @@ public class PhoneBook {
 				break;
 
 			case 3:
-				
+
 				printPersonByName();
 				break;
-				
+
 			case 4:
 
 				break;
 			case 5:
 				
+				deletePersonEntry();
 				break;
+				
 			case 0:
 
 				closeDBConnection();
@@ -280,10 +336,6 @@ public class PhoneBook {
 	}
 
 	private void editPerson() {
-
-	}
-
-	private void deletePerson() {
 
 	}
 
