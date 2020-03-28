@@ -25,6 +25,7 @@ public class PhoneBook {
 	private Statement standardStatement;
 	private PreparedStatement preparedStatement;
 	private ResultSet setResults;
+	ResultSet[] resSet = null;
 
 	// defaultni konstruktor
 	public PhoneBook() {
@@ -109,37 +110,93 @@ public class PhoneBook {
 	
 	private void printEntriesByLetters() {
 		
-		System.out.println("Unesite jedno ili vise pocetnih slova imena(odvojeno zarezom ili praznim mjestom): ");
+		System.out.print("Unesite jedno ili vise pocetnih slova imena(odvojeno zarezom ili praznim mjestom):\n>_ ");
 		String[] niz = scanner.nextLine().split("(\\s)|(\\,\\s+)|(\\,)");
-		
+		ResultSet[] resSet = null;
 		String letterQuery = ""; 
 		
 		for(String s : niz) {			
 			letterQuery += "SELECT Ime, Prezime, Br_tel FROM imenik INNER JOIN osoba ON imenik.ID_Osoba = osoba.ID_Osoba " + 
-						   "WHERE Ime LIKE '" + s + "%';";
+						   "WHERE Ime REGEXP '^" + s + "[a-zA-Z]';";
 		}
-				
+		
 		try {
+			System.out.println("\nOsobe pronadjene u bazi sa pocetnim slovima :\n*********************************************");
+			resSet = MultiQuery.executeSelectQueries(connDB, letterQuery);
+			
+			for (ResultSet rs : resSet) {
+				while (rs.next()) {
+					for (int i = 1; i <= rs.getMetaData().getColumnCount(); i++) {
+						System.out.print(rs.getString(i) + ", ");
+					}
+					System.out.println();
+				}
+			}
+		} catch (Exception e) {
+			System.err.println(e);
+		} finally {			
+			try {
+				for (ResultSet res : resSet)
+					res.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		/*try {
 			preparedStatement = connDB.prepareStatement(letterQuery);
 			preparedStatement.execute();
-			//int i = 0;
 			System.out.println("\nOsobe pronadjene u bazi sa pocetnim slovima :\n" + 
 					   		   "*********************************************");			
             do {
                 try (ResultSet rs = preparedStatement.getResultSet()) {
                 	  	                	
                     while (rs.next()) {
-                        System.out.print(rs.getString(1) + ": " + rs.getString(2) + ": " + rs.getString(3));
+                        System.out.print(rs.getString(1) + ", " + rs.getString(2) + ": " + rs.getString(3));
                         System.out.println();
                     }
                 }
-                //i++;
             } while (preparedStatement.getMoreResults());
 			
             System.out.println("*********************************************");	
             
 		} catch (Exception e) {
 			System.err.println(e);
+		}*/	
+	}
+	
+	private void printEntriesByPhone() {
+		
+		System.out.print("Unesite pozivni broj telefona(u formatu 06x/03x/05x) odvojeno zarezom ili praznim mjestom:\n>_ ");
+		String[] niz = scanner.nextLine().split("(\\s)|(\\,\\s+)|(\\,)");
+		String phoneQuery = ""; 
+		
+		for(String s : niz) {			
+			phoneQuery += "SELECT Ime, Prezime, Br_tel FROM imenik INNER JOIN osoba ON imenik.ID_Osoba = osoba.ID_Osoba " + 
+						   "WHERE Br_tel REGEXP '^" + s + "[/][0-9]{3}-[0-9]{3}';";
+		}
+		
+		try {
+			System.out.println("\nPronadjene osobe u bazi prema pozivnim brojevima:\n*********************************************");
+			resSet = MultiQuery.executeSelectQueries(connDB, phoneQuery);
+			
+			for (ResultSet rs : resSet) {
+				while (rs.next()) {
+					for (int i = 1; i <= rs.getMetaData().getColumnCount(); i++) {
+						System.out.print(rs.getString(i) + ", ");
+					}
+					System.out.println();
+				}
+			}
+		} catch (Exception e) {
+			System.err.println(e);
+		} finally {			
+			try {
+				for (ResultSet res : resSet)
+					res.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
 		}		
 	}
 	
@@ -329,12 +386,14 @@ public class PhoneBook {
 
 	private void printChoice() {
 		System.out.print("\n... Dobrodosli u Web Imenik ...\n\n" + 
-						 " Izbornik:\n" + " 1 - Dodajte novi unos u imenik\n" + 
+						 " Izbornik:\n" + 
+						 " 1 - Dodajte novi unos u imenik\n" + 
 						 " 2 - Izlistajte sve unose iz imenika\n" + 
-						 " 3 - Pronadji broj telefona po imenu i prezimenu\n" +
-						 " 4 - Pronadji osobe po prvom slovu u imenu\n" + 
-						 " 5 - Editujte unos iz imenika\n" + 
-						 " 6 - Obrišite unos iz imenika\n" + 
+						 " 3 - Izlistajte brojeve telefona po imenu i prezimenu\n" +
+						 " 4 - Izlistajte osobe po prvom slovu u imenu\n" +
+						 " 5 - Izlistajte osobe i brojeve po pozivnom broju\n" + 
+						 " 6 - Editujte unos iz imenika\n" + 
+						 " 7 - Obrišite unos iz imenika\n" + 
 						 " 0 - Izlaz iz programa\n " + 
 						 ">_ ");
 	}
@@ -375,12 +434,18 @@ public class PhoneBook {
 				
 			case 5:
 				
+				printEntriesByPhone();
 				break;
 				
 			case 6:
 				
+				break;
+				
+			case 7:
+				
 				deletePersonEntry();
 				break;
+				
 			case 0:
 
 				closeDBConnection();
