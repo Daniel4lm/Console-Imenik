@@ -23,7 +23,7 @@ public class PhoneBook {
 
 	private Connection connDB = null;
 	private Statement standardStatement;
-	private PreparedStatement preparedStatement;
+	//private PreparedStatement preparedStatement;
 	private ResultSet setResults;
 	ResultSet[] resSet = null;
 
@@ -111,18 +111,19 @@ public class PhoneBook {
 	private void printEntriesByLetters() {
 		
 		System.out.print("Unesite jedno ili vise pocetnih slova imena(odvojeno zarezom ili praznim mjestom):\n>_ ");
-		String[] niz = scanner.nextLine().split("(\\s)|(\\,\\s+)|(\\,)");
+		String[] niz = scanner.nextLine().split("(\\s*\\,+\\s*)|(\\s+)");
 		ResultSet[] resSet = null;
 		String letterQuery = ""; 
 		
-		for(String s : niz) {			
+		for(String s : niz) {
+			//System.out.print(s);
 			letterQuery += "SELECT Ime, Prezime, Br_tel FROM imenik INNER JOIN osoba ON imenik.ID_Osoba = osoba.ID_Osoba " + 
 						   "WHERE Ime REGEXP '^" + s + "[a-zA-Z]';";
 		}
 		
 		try {
 			System.out.println("\nOsobe pronadjene u bazi sa pocetnim slovima :\n*********************************************");
-			resSet = MultiQuery.executeSelectQueries(connDB, letterQuery);
+			resSet = DBQueries.executeSelectQueries(connDB, letterQuery);
 			
 			for (ResultSet rs : resSet) {
 				while (rs.next()) {
@@ -134,7 +135,7 @@ public class PhoneBook {
 			}
 		} catch (Exception e) {
 			System.err.println(e);
-		} finally {			
+		} finally {
 			try {
 				for (ResultSet res : resSet)
 					res.close();
@@ -168,17 +169,17 @@ public class PhoneBook {
 	private void printEntriesByPhone() {
 		
 		System.out.print("Unesite pozivni broj telefona(u formatu 06x/03x/05x) odvojeno zarezom ili praznim mjestom:\n>_ ");
-		String[] niz = scanner.nextLine().split("(\\s)|(\\,\\s+)|(\\,)");
+		String[] niz = scanner.nextLine().split("(\\s*\\,+\\s*)|(\\s+)");
 		String phoneQuery = ""; 
 		
-		for(String s : niz) {			
+		for(String s : niz) {
 			phoneQuery += "SELECT Ime, Prezime, Br_tel FROM imenik INNER JOIN osoba ON imenik.ID_Osoba = osoba.ID_Osoba " + 
 						   "WHERE Br_tel REGEXP '^" + s + "[/][0-9]{3}-[0-9]{3}';";
 		}
 		
 		try {
 			System.out.println("\nPronadjene osobe u bazi prema pozivnim brojevima:\n*********************************************");
-			resSet = MultiQuery.executeSelectQueries(connDB, phoneQuery);
+			resSet = DBQueries.executeSelectQueries(connDB, phoneQuery);
 			
 			for (ResultSet rs : resSet) {
 				while (rs.next()) {
@@ -250,38 +251,46 @@ public class PhoneBook {
 		String lName = scanner.next();
 		System.out.print("Unesite broj telefona >_ ");
 		scanner.nextLine();
-		String telNumber = scanner.nextLine();
+		String telNumber = scanner.next();
 
 		String insert1Query = "INSERT INTO osoba(Ime, Prezime) VALUES ('" + fName + "', '" + lName + "')";
 
-		String insert2Query = "INSERT INTO imenik(ID_Osoba, Br_tel) VALUES (?, ?)";
+		String insert2Query = "INSERT INTO imenik(ID_Osoba, Br_tel) VALUES (idx, 'telephone')";
 
 		// entryList.add(new Entry(new Person(fName, lName), telNumber));
 
 		try {
 
-			preparedStatement = connDB.prepareStatement(insert2Query);
+			//preparedStatement = connDB.prepareStatement(insert2Query);
 
 			/* Ako osoba ne postoji u bazi podataka - izvrsiti upis u obje tabele */
 			if (checkPerson(fName, lName) == 0) {
+				insert2Query = insert2Query.replace("idx", checkPerson(fName, lName).toString());
+				insert2Query = insert2Query.replace("telephone", telNumber);
+				System.out.println(insert2Query);
+				DBQueries.executeUpdateQueries(connDB, insert1Query);
+				DBQueries.executeUpdateQueries(connDB, insert2Query);
 
-				standardStatement = connDB.createStatement();
+				/*standardStatement = connDB.createStatement();
 				if (standardStatement.executeUpdate(insert1Query) > 0) {
 					System.out.println("Upis u imenik ... ");
 				}
-
 				preparedStatement.setInt(1, checkPerson(fName, lName));
 				preparedStatement.setString(2, telNumber);
-				preparedStatement.executeUpdate();
+				preparedStatement.executeUpdate();*/
 
 			}
 			/* Ako osoba vec postoji - dodati samo upis u tabela 'imenik' */
 			else {
-
 				if (!checkPhoneNumber(fName, lName, telNumber)) {
-					preparedStatement.setInt(1, checkPerson(fName, lName));
+					insert2Query = insert2Query.replace("idx", checkPerson(fName, lName).toString());
+					insert2Query = insert2Query.replace("telephone", telNumber);
+					System.out.println(insert2Query);
+
+					DBQueries.executeUpdateQueries(connDB, insert2Query);
+					/*preparedStatement.setInt(1, checkPerson(fName, lName));
 					preparedStatement.setString(2, telNumber);
-					preparedStatement.executeUpdate();
+					preparedStatement.executeUpdate();*/
 				} else {
 					System.out.println("Osoba sa istim brojem telefona vec postoji u bazi podataka!");
 				}
@@ -292,36 +301,13 @@ public class PhoneBook {
 		} catch (SQLException insertEx) {
 			System.err.println("Unos u imenik nije uspjesan : " + insertEx);
 		} finally {
-			try {
+			/*try {
 				standardStatement.close();
 				preparedStatement.close();
 			} catch (SQLException e) {
 				e.printStackTrace();
-			}
+			}*/
 		}
-	}
-
-	/* Funkcija koja vraca max ID iz tabele o studentima */
-	private Integer returnMaxID() throws SQLException  {
-		
-		String maxQuery = "SELECT MAX(ID_Osoba) FROM imenik";				
-		Statement maxStatement = connDB.createStatement();
-		ResultSet max = maxStatement.executeQuery(maxQuery);
-		max.next();
-		Integer maxEl = max.getInt(1);
-		maxStatement.close();
-		max.close();
-		return maxEl;	
-					
-	}
-	
-	/* Funkcija koja izvrasava reset AUTO_INCREMENT svaki put kada se izvrsi delete statement iz tabele */
-	private void auto_increment_Reset() throws SQLException {
-		
-		String alterQuery = "ALTER TABLE imenik AUTO_INCREMENT = " + returnMaxID();
-		Statement alterStatement = connDB.createStatement();
-		alterStatement.executeUpdate(alterQuery);		
-		alterStatement.close();
 	}
 	
 	private void deletePersonEntry() {
@@ -342,22 +328,24 @@ public class PhoneBook {
 				return;
 			}
 			
-			standardStatement = connDB.createStatement();
-
+			DBQueries.executeUpdateQueries(connDB, deleteQuery);
+			
+			/*standardStatement = connDB.createStatement();
+			
 			if (standardStatement.executeUpdate(deleteQuery) > 0) {
 				System.out.println("Osoba obrisana iz imenika ...");
 				
-			}
-			auto_increment_Reset();
+			}*/
+			DBQueries.auto_increment_Reset(connDB, "ID", "imenik");
 
 		} catch (SQLException delEx) {
 			System.err.println(delEx);
 		} finally {
-			try {
+			/*try {
 				standardStatement.close();
 			} catch (SQLException e) {
 				e.printStackTrace();
-			}
+			}*/
 		}
 	}
 
